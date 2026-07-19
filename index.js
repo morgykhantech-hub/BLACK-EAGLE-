@@ -48,10 +48,13 @@ async function startBot() {
 }
 
 // START THE BOT
-startBot()    cd BLACK-EAGLE-BOT
-    npm install
-    npm start
-    
+startBot(BLACK-EAGLE-BOT)
+    owner:
+    prefix = [ ]
+    Commands:  1800
+    mode:
+    version 32.0.0
+        
     [A& CHAT - 20]
 .ai
 .gpt
@@ -123,7 +126,7 @@ startBot()    cd BLACK-EAGLE-BOT
 .gay
 .beautiful
 
-[GROUP ADMIN - 25]
+[GROUP ADMIN - 30]
 .menu
 .tagall
 .hidetag
@@ -149,8 +152,9 @@ startBot()    cd BLACK-EAGLE-BOT
 .poll
 .warn
 .unwarn
+. untag
 
-[FUN & GAMES - 20]
+[FUN & GAMES - 50]
 .truth
 .dare
 .tictactoe
@@ -250,7 +254,7 @@ startBot()    cd BLACK-EAGLE-BOT
 .help
 .speed
 .list
-.afk - 200 COMMANDS ==========
+.afk - 1800 COMMANDS ==========
 
 [AI & CHAT - 20]
 .ai
