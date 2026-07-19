@@ -56,22 +56,13 @@ async function startBot() {
         }
     })
 }
-startBot()module.exports 
-    name: 'menu', 
-    execute(
-        sock.sendMessage(msg.key.remoteJid, { 
-            text: `*BLACK EAGLE v5.7*\n\n.commands loaded: ${commands.size}\n\n.ai.bible.prayer.ytmp3.sticker.menu\n\nAdd more commands in /commands folder` 
-        }) 
-    } 
-                     }{
-  "name": "black-eagle",
-  "version": "5.7.0",
-  "main": "index.js",
-  "scripts": {
-    "start": "node index.js"
-  },
-  "dependencies": {
-    "@whiskeysockets/baileys": "^6.7.8"
+startBot .menu
+         .repo
+         .prefix =[]
+         .owner 
+         version 38.0.9
+
+   
   }
             }
 1* AI Commands 
