@@ -3,13 +3,13 @@ const { Boom } = require('@hapi/boom')
 const fs = require('fs')
 const path = require('path')
 
+const prefix = '.'
+
 async function startBot() {
     const { state, saveCreds } = await useMultiFileAuthState('session')
-    
-    const sock = makeWASocket({
+    const sock = makeWASocket({ 
         auth: state,
-        printQRInTerminal: true,
-        logger: { level: 'silent' }
+        printQRInTerminal: true
     })
 
     sock.ev.on('creds.update', saveCreds)
@@ -17,38 +17,42 @@ async function startBot() {
     sock.ev.on('connection.update', (update) => {
         const { connection, lastDisconnect } = update
         if(connection === 'close') {
-            const shouldReconnect = (lastDisconnect.error)?.output?.statusCode !== DisconnectReason.loggedOut
-            console.log('connection closed due to ', lastDisconnect.error, ', reconnecting ', shouldReconnect)
-            if(shouldReconnect) startBot()
+            const shouldReconnect = (lastDisconnect.error)?.output?.statusCode!== DisconnectReason.loggedOut
+            console.log('Connection closed. Reconnecting...', shouldReconnect)
+            if(shouldReconnect) {
+                startBot()
+            }
         } else if(connection === 'open') {
-            console.log('🦅 BLACK EAGLE BOT CONNECTED 🦅')
+            console.log('🔥 BLACK EAGLE v5.7 CONNECTED 🔥')
+        }
+    })
+
+    sock.ev.on('messages.upsert', async (m) => {
+        if(!m.messages[0].message) return
+        const msg = m.messages[0]
+        const from = msg.key.remoteJid
+        const body = msg.message.conversation || msg.message.extendedTextMessage?.text || ''
+        
+        if(!body.startsWith(prefix)) return
+        
+        const args = body.slice(prefix.length).trim().split(/ +/)
+        const command = args.shift().toLowerCase()
+        
+        // Basic menu command
+        if(command === 'menu'){
+            await sock.sendMessage(from, { 
+                text: `*BLACK EAGLE v5.7*\n\n.ai - Chat with AI\n.sticker - Make sticker\n.ytmp3 - Download song\n.menu - Show this menu\nBot by MORGYKHANTECH` 
+            })
         }
     })
 }
 
-startBot(){
-  "name": "black-eagle-bot",
-  "version": "2.0.0",
-  "description": "WhatsApp Bot with 200 Commands",
-  "main": "index.js",
-  "scripts": {
-    "start": "node index.js"
-  },
-  "dependencies": {
-    "@whiskeysockets/baileys": "^6.6.0"
-  }========== BLACK EAGLE BOT v    "versioRepository name: BLACK-EAGLE-BOT
-Description: My WhatsApp Bot with 200 Commands
-Public  <- Select this
-Add a README <- Check this box
-Add .gitignore: Node  <- Select this
-License: NonRepository name: BLACK-EAGLE-BOT
-Description: My WhatsApp Bot with 200 Commands
-Public  <- Select this
-Add a README <- Check this box
-Add .gitignore: Node  <- Select this
-License: None bot"version": "5.7",0========== BLACK EAGLE BOT v2.0 - 200 COMMANDS ==========
-
-[AI & CHAT - 20]
+// START THE BOT
+startBot()    cd BLACK-EAGLE-BOT
+    npm install
+    npm start
+    
+    [A& CHAT - 20]
 .ai
 .gpt
 .gpt4
