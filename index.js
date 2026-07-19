@@ -4,6 +4,22 @@ const fs = require('fs')
 const path = require('path')
 
 const prefix = '.'
+const owner = 'MORGYKHANTECH'
+const botVersion = '5.7'
+
+// Command categories for menu
+const COMMANDS = {
+    'AI & CHAT': ['.ai', '.gpt', '.gpt4', '.gemini', '.claude', '.llama', '.imagine', '.img2img', '.upscale', '.rmbg', '.chatbot', '.voice', '.tts', '.stt', '.pdf', '.summarize', '.rewrite', '.email', '.code', '.bugfix'],
+    'DOWNLOAD': ['.ytmp3', '.ytmp4', '.ytplay', '.ytsearch', '.ytlist', '.tiktok', '.tiktoksearch', '.ig', '.igstory', '.fb', '.twitter', '.pinterest', '.mediafire', '.gdrive', '.terabox', '.spotify', '.soundcloud', '.song', '.lyrics', '.album', '.play', '.playlist', '.video', '.anime-dl', '.manga-dl'],
+    'STICKER & EDIT': ['.sticker', '.s', '.attp', '.ttp', '.toimg', '.circle', '.rmbg', '.hd', '.blur', '.pixel', '.invert', '.glitch', '.logo', '.logo2', '.emojimix', '.memegen', '.wanted', '.trigger', '.gay', '.beautiful'],
+    'GROUP ADMIN': ['.menu', '.tagall', '.hidetag', '.welcome', '.goodbye', '.antilink', '.antispam', '.antitoxic', '.antivv', '.antidelete', '.kick', '.add', '.promote', '.demote', '.mute', '.unmute', '.group', '.open', '.close', '.setpp', '.setname', '.setdesc', '.poll', '.warn', '.unwarn'],
+    'FUN & GAMES': ['.truth', '.dare', '.tictactoe', '.slot', '.coinflip', '.dice', '.8ball', '.ship', '.couple', '.lovetest', '.rate', '.howgay', '.joke', '.meme', '.gif', '.quote', '.fact', '.roast', '.compliment', '.horoscope'],
+    'TOOLS': ['.weather', '.news', '.calc', '.translate', '.define', '.qr', '.qrread', '.ssweb', '.github', '.npm', '.ip', '.dns', '.shorturl', '.time', '.date', '.pray', '.hijri', '.bible', '.quran', '.hadith'],
+    'MEDIA & ANIME': ['.wallpaper', '.anime', '.animequote', '.character', '.waifu', '.neko', '.cosplay', '.art', '.painting', '.pinterest-search', '.movie', '.tv', '.anime-info', '.manga', '.game'],
+    'OWNER ONLY': ['.ping', '.runtime', '.restart', '.shutdown', '.broadcast', '.bcgc', '.join', '.leave', '.ban', '.unban', '.block', '.unblock', '.backup', '.eval', '.exec'],
+    'CONVERTER': ['.toaudio', '.tovn', '.tomp3', '.tomp4', '.togif', '.tosticker', '.toimage', '.tourl', '.tourl2', '.base64'],
+    'INFO & MISC': ['.owner', '.script', '.support', '.alive', '.donate', '.report', '.help', '.speed', '.list', '.afk']
+}
 
 async function startBot() {
     const { state, saveCreds } = await useMultiFileAuthState('session')
@@ -17,13 +33,13 @@ async function startBot() {
     sock.ev.on('connection.update', (update) => {
         const { connection, lastDisconnect } = update
         if(connection === 'close') {
-            const shouldReconnect = (lastDisconnect.error)?.output?.statusCode!== DisconnectReason.loggedOut
+            const shouldReconnect = (lastDisconnect.error)?.output?.statusCode !== DisconnectReason.loggedOut
             console.log('Connection closed. Reconnecting...', shouldReconnect)
             if(shouldReconnect) {
                 startBot()
             }
         } else if(connection === 'open') {
-            console.log('🔥 BLACK EAGLE v5.7 CONNECTED 🔥')
+            console.log('🔥 BLACK EAGLE v' + botVersion + ' CONNECTED 🔥')
         }
     })
 
@@ -38,421 +54,46 @@ async function startBot() {
         const args = body.slice(prefix.length).trim().split(/ +/)
         const command = args.shift().toLowerCase()
         
-        // Basic menu command
+        // Menu command
         if(command === 'menu'){
-            await sock.sendMessage(from, { 
-                text: `*BLACK EAGLE v5.7*\n\n.ai - Chat with AI\n.sticker - Make sticker\n.ytmp3 - Download song\n.menu - Show this menu\nBot by MORGYKHANTECH` 
-            })
+            let menuText = `*╭─── BLACK EAGLE v${botVersion} ───╮*\n\n`
+            
+            for (const [category, cmds] of Object.entries(COMMANDS)) {
+                menuText += `*${category}* [${cmds.length}]\n`
+                menuText += cmds.join(' ') + '\n\n'
+            }
+            
+            menuText += `*╰─ Bot by ${owner} ─╯*`
+            
+            await sock.sendMessage(from, { text: menuText })
+        }
+        
+        // Ping command (example)
+        else if(command === 'ping'){
+            await sock.sendMessage(from, { text: '🏓 Pong! Bot is running.' })
+        }
+        
+        // Owner command (example)
+        else if(command === 'owner'){
+            await sock.sendMessage(from, { text: `*Owner:* ${owner}\n*Version:* ${botVersion}\n*Total Commands:* 1800+` })
+        }
+        
+        // Help command (example)
+        else if(command === 'help'){
+            await sock.sendMessage(from, { text: `Type *.menu* to see all commands` })
+        }
+        
+        // Add more commands as needed
+        else {
+            await sock.sendMessage(from, { text: `Command not implemented yet.\nType *.menu* to see all available commands.` })
         }
     })
 }
 
 // START THE BOT
-startBot(BLACK-EAGLE-BOT)
-    owner:
-    prefix = [ ]
-    Commands:  1800
-    mode:
-    version 32.0.0
-        
-    [A& CHAT - 20]
-.ai
-.gpt
-.gpt4
-.gemini
-.claude
-.llama
-.imagine
-.img2img
-.upscale
-.rmbg
-.chatbot
-.voice
-.tts
-.stt
-.pdf
-.summarize
-.rewrite
-.email
-.code
-.bugfix
+startBot().catch(err => {
+    console.error('Error starting bot:', err)
+    process.exit(1)
+})
 
-[DOWNLOAD - 25]
-.ytmp3
-.ytmp4
-.ytplay
-.ytsearch
-.ytlist
-.tiktok
-.tiktoksearch
-.ig
-.igstory
-.fb
-.twitter
-.pinterest
-.mediafire
-.gdrive
-.terabox
-.spotify
-.soundcloud
-.song
-.lyrics
-.album
-.play
-.playlist
-.video
-.anime-dl
-.manga-dl
-
-[STICKER & EDIT - 20]
-.sticker
-.s
-.attp
-.ttp
-.toimg
-.circle
-.rmbg
-.hd
-.blur
-.pixel
-.invert
-.glitch
-.logo
-.logo2
-.emojimix
-.memegen
-.wanted
-.trigger
-.gay
-.beautiful
-
-[GROUP ADMIN - 30]
-.menu
-.tagall
-.hidetag
-.welcome
-.goodbye
-.antilink
-.antispam
-.antitoxic
-.antivv
-.antidelete
-.kick
-.add
-.promote
-.demote
-.mute
-.unmute
-.group
-.open
-.close
-.setpp
-.setname
-.setdesc
-.poll
-.warn
-.unwarn
-. untag
-
-[FUN & GAMES - 50]
-.truth
-.dare
-.tictactoe
-.slot
-.coinflip
-.dice
-.8ball
-.ship
-.couple
-.lovetest
-.rate
-.howgay
-.joke
-.meme
-.gif
-.quote
-.fact
-.roast
-.compliment
-.horoscope
-
-[TOOLS - 20]
-.weather
-.news
-.calc
-.translate
-.define
-.qr
-.qrread
-.ssweb
-.github
-.npm
-.ip
-.dns
-.shorturl
-.time
-.date
-.pray
-.hijri
-.bible
-.quran
-.hadith
-
-[MEDIA & ANIME - 15]
-.wallpaper
-.anime
-.animequote
-.character
-.waifu
-.neko
-.cosplay
-.art
-.painting
-.pinterest-search
-.movie
-.tv
-.anime-info
-.manga
-.game
-
-[OWNER ONLY - 15]
-.ping
-.runtime
-.restart
-.shutdown
-.broadcast
-.bcgc
-.join
-.leave
-.ban
-.unban
-.block
-.unblock
-.backup
-.eval
-.exec
-
-[CONVERTER - 10]
-.toaudio
-.tovn
-.tomp3
-.tomp4
-.togif
-.tosticker
-.toimage
-.tourl
-.tourl2
-.base64
-
-[INFO & MISC - 10]
-.owner
-.script
-.support
-.alive
-.donate
-.report
-.help
-.speed
-.list
-.afk - 1800 COMMANDS ==========
-
-[AI & CHAT - 20]
-.ai
-.gpt
-.gpt4
-.gemini
-.claude
-.llama
-.imagine
-.img2img
-.upscale
-.rmbg
-.chatbot
-.voice
-.tts
-.stt
-.pdf
-.summarize
-.rewrite
-.email
-.code
-.bugfix
-
-[DOWNLOAD - 25]
-.ytmp3
-.ytmp4
-.ytplay
-.ytsearch
-.ytlist
-.tiktok
-.tiktoksearch
-.ig
-.igstory
-.fb
-.twitter
-.pinterest
-.mediafire
-.gdrive
-.terabox
-.spotify
-.soundcloud
-.song
-.lyrics
-.album
-.play
-.playlist
-.video
-.anime-dl
-.manga-dl
-
-[STICKER & EDIT - 20]
-.sticker
-.s
-.attp
-.ttp
-.toimg
-.circle
-.rmbg
-.hd
-.blur
-.pixel
-.invert
-.glitch
-.logo
-.logo2
-.emojimix
-.memegen
-.wanted
-.trigger
-.gay
-.beautiful
-
-[GROUP ADMIN - 25]
-.menu
-.tagall
-.hidetag
-.welcome
-.goodbye
-.antilink
-.antispam
-.antitoxic
-.antivv
-.antidelete
-.kick
-.add
-.promote
-.demote
-.mute
-.unmute
-.group
-.open
-.close
-.setpp
-.setname
-.setdesc
-.poll
-.warn
-.unwarn
-
-[FUN & GAMES - 20]
-.truth
-.dare
-.tictactoe
-.slot
-.coinflip
-.dice
-.8ball
-.ship
-.couple
-.lovetest
-.rate
-.howgay
-.joke
-.meme
-.gif
-.quote
-.fact
-.roast
-.compliment
-.horoscope
-
-[TOOLS - 20]
-.weather
-.news
-.calc
-.translate
-.define
-.qr
-.qrread
-.ssweb
-.github
-.npm
-.ip
-.dns
-.shorturl
-.time
-.date
-.pray
-.hijri
-.bible
-.quran
-.hadith
-
-[MEDIA & ANIME - 15]
-.wallpaper
-.anime
-.animequote
-.character
-.waifu
-.neko
-.cosplay
-.art
-.painting
-.pinterest-search
-.movie
-.tv
-.anime-info
-.manga
-.game
-
-[OWNER ONLY - 15]
-.ping
-.runtime
-.restart
-.shutdown
-.broadcast
-.bcgc
-.join
-.leave
-.ban
-.unban
-.block
-.unblock
-.backup
-.eval
-.exec
-
-[CONVERTER - 10]
-.toaudio
-.tovn
-.tomp3
-.tomp4
-.togif
-.tosticker
-.toimage
-.tourl
-.tourl2
-.base64
-
-[INFO & MISC - 10]
-.owner
-.script
-.support
-.alive
-.donate
-.report
-.help
-.speed
-.list
-.afk
-    }
+module.exports = { startBot }
