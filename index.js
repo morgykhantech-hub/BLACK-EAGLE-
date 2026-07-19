@@ -1,45 +1,41 @@
+
 const { default: makeWASocket, useMultiFileAuthState, DisconnectReason } = require('@whiskeysockets/baileys')
 const { Boom } = require('@hapi/boom')
 const fs = require('fs')
 const path = require('path')
 
 const prefix = '.'
-const owner = 'MORGYKHANTECH'
-const botVersion = '5.7'
+const commands = new Map()
 
-// Command categories for menu
-const COMMANDS = {
-    'AI & CHAT': ['.ai', '.gpt', '.gpt4', '.gemini', '.claude', '.llama', '.imagine', '.img2img', '.upscale', '.rmbg', '.chatbot', '.voice', '.tts', '.stt', '.pdf', '.summarize', '.rewrite', '.email', '.code', '.bugfix'],
-    'DOWNLOAD': ['.ytmp3', '.ytmp4', '.ytplay', '.ytsearch', '.ytlist', '.tiktok', '.tiktoksearch', '.ig', '.igstory', '.fb', '.twitter', '.pinterest', '.mediafire', '.gdrive', '.terabox', '.spotify', '.soundcloud', '.song', '.lyrics', '.album', '.play', '.playlist', '.video', '.anime-dl', '.manga-dl'],
-    'STICKER & EDIT': ['.sticker', '.s', '.attp', '.ttp', '.toimg', '.circle', '.rmbg', '.hd', '.blur', '.pixel', '.invert', '.glitch', '.logo', '.logo2', '.emojimix', '.memegen', '.wanted', '.trigger', '.gay', '.beautiful'],
-    'GROUP ADMIN': ['.menu', '.tagall', '.hidetag', '.welcome', '.goodbye', '.antilink', '.antispam', '.antitoxic', '.antivv', '.antidelete', '.kick', '.add', '.promote', '.demote', '.mute', '.unmute', '.group', '.open', '.close', '.setpp', '.setname', '.setdesc', '.poll', '.warn', '.unwarn'],
-    'FUN & GAMES': ['.truth', '.dare', '.tictactoe', '.slot', '.coinflip', '.dice', '.8ball', '.ship', '.couple', '.lovetest', '.rate', '.howgay', '.joke', '.meme', '.gif', '.quote', '.fact', '.roast', '.compliment', '.horoscope'],
-    'TOOLS': ['.weather', '.news', '.calc', '.translate', '.define', '.qr', '.qrread', '.ssweb', '.github', '.npm', '.ip', '.dns', '.shorturl', '.time', '.date', '.pray', '.hijri', '.bible', '.quran', '.hadith'],
-    'MEDIA & ANIME': ['.wallpaper', '.anime', '.animequote', '.character', '.waifu', '.neko', '.cosplay', '.art', '.painting', '.pinterest-search', '.movie', '.tv', '.anime-info', '.manga', '.game'],
-    'OWNER ONLY': ['.ping', '.runtime', '.restart', '.shutdown', '.broadcast', '.bcgc', '.join', '.leave', '.ban', '.unban', '.block', '.unblock', '.backup', '.eval', '.exec'],
-    'CONVERTER': ['.toaudio', '.tovn', '.tomp3', '.tomp4', '.togif', '.tosticker', '.toimage', '.tourl', '.tourl2', '.base64'],
-    'INFO & MISC': ['.owner', '.script', '.support', '.alive', '.donate', '.report', '.help', '.speed', '.list', '.afk']
+// Auto load commands from /commands folder
+const commandsPath = path.join(__dirname, 'commands')
+if(fs.existsSync(commandsPath)){
+    const commandFiles = fs.readdirSync(commandsPath).filter(file => file.endsWith('.js'))
+    for(const file of commandFiles){
+        const command = require(`./commands/${file}`)
+        commands.set(command.name, command)
+    }
 }
 
 async function startBot() {
     const { state, saveCreds } = await useMultiFileAuthState('session')
     const sock = makeWASocket({ 
-        auth: state,
-        printQRInTerminal: true
+        auth: state, 
+        printQRInTerminal: true,
+        logger: { level: 'silent' }
     })
-
     sock.ev.on('creds.update', saveCreds)
     
     sock.ev.on('connection.update', (update) => {
-        const { connection, lastDisconnect } = update
+        const { connection, lastDisconnect, qr } = update
+        if(qr) console.log('Scan QR Code Above')
         if(connection === 'close') {
-            const shouldReconnect = (lastDisconnect.error)?.output?.statusCode !== DisconnectReason.loggedOut
-            console.log('Connection closed. Reconnecting...', shouldReconnect)
-            if(shouldReconnect) {
-                startBot()
-            }
+            const shouldReconnect = (lastDisconnect.error)?.output?.statusCode!== DisconnectReason.loggedOut
+            console.log('Connection closed. Reconnecting:', shouldReconnect)
+            if(shouldReconnect) startBot()
         } else if(connection === 'open') {
-            console.log('🔥 BLACK EAGLE v' + botVersion + ' CONNECTED 🔥')
+            console.log('🔥 BLACK EAGLE v16.8.8 CONNECTED 🔥')
+            console.log(`Loaded ${commands.size} commands`)
         }
     })
 
@@ -48,52 +44,988 @@ async function startBot() {
         const msg = m.messages[0]
         const from = msg.key.remoteJid
         const body = msg.message.conversation || msg.message.extendedTextMessage?.text || ''
-        
         if(!body.startsWith(prefix)) return
         
         const args = body.slice(prefix.length).trim().split(/ +/)
-        const command = args.shift().toLowerCase()
+        const commandName = args.shift().toLowerCase()
         
-        // Menu command
-        if(command === 'menu'){
-            let menuText = `*╭─── BLACK EAGLE v${botVersion} ───╮*\n\n`
-            
-            for (const [category, cmds] of Object.entries(COMMANDS)) {
-                menuText += `*${category}* [${cmds.length}]\n`
-                menuText += cmds.join(' ') + '\n\n'
-            }
-            
-            menuText += `*╰─ Bot by ${owner} ─╯*`
-            
-            await sock.sendMessage(from, { text: menuText })
-        }
-        
-        // Ping command (example)
-        else if(command === 'ping'){
-            await sock.sendMessage(from, { text: '🏓 Pong! Bot is running.' })
-        }
-        
-        // Owner command (example)
-        else if(command === 'owner'){
-            await sock.sendMessage(from, { text: `*Owner:* ${owner}\n*Version:* ${botVersion}\n*Total Commands:* 1800+` })
-        }
-        
-        // Help command (example)
-        else if(command === 'help'){
-            await sock.sendMessage(from, { text: `Type *.menu* to see all commands` })
-        }
-        
-        // Add more commands as needed
-        else {
-            await sock.sendMessage(from, { text: `Command not implemented yet.\nType *.menu* to see all available commands.` })
+        const command = commands.get(commandName)
+        if(command) {
+            try { command.execute(sock, msg, args) } 
+            catch(e){ await sock.sendMessage(from, { text: `❌ Error: ${e.message}` }) }
         }
     })
 }
+startBot()module.exports 
+    name: 'menu', 
+    execute(
+        sock.sendMessage(msg.key.remoteJid, { 
+            text: `*BLACK EAGLE v5.7*\n\n.commands loaded: ${commands.size}\n\n.ai.bible.prayer.ytmp3.sticker.menu\n\nAdd more commands in /commands folder` 
+        }) 
+    } 
+                     }{
+  "name": "black-eagle",
+  "version": "5.7.0",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "@whiskeysockets/baileys": "^6.7.8"
+  }
+            }
+1* AI Commands 
+.ai
+.gpt
+.bard
+.gemini
+.chatgpt
+.chat
+.ask
+.bot
+.gpt4
+.gpt3
+.claude
+.llama
+.mistral
+.image
+.imagine
+.draw
+.dalle
+.midjourney
+.upscale
+.remove-bg
+.ai-chat
+.ai-code
+.ai-bug
+.ai-fix
+.ai-translate
+.ai-summary
+.ai-story
+.ai-poem
+.ai-rap
+.ai-roast
+.ai-flirt
+.ai-therapist
+.ai-teacher
+.ai-tutor
+.ai-math
+.ai-physics
+.ai-chemistry
+.ai-history
+.ai-essay
+.ai-email
+.ai-bio
+.ai-caption
+.ai-hashtag
+.ai-idea
+.ai-name
+.ai-logo
+.ai-prompt
+.ai-rewrite
+.ai-grammar
+.ai-resume
+.ai-coverletter
+.ai-interview
+.ai-linkedin
+.ai-youtube
+.ai-tiktok
+.ai-script
+.ai-thumbnail
+.ai-product
+.ai-ad
+.ai-marketing
+.ai-brainstorm
+.ai-research
+.ai-paper
+.ai-plagiarism
+.ai-detect
+.ai-humanize
+.ai-voice
+.ai-clone
+.ai-song
+.ai-lyrics
+.ai-beat
+.ai-cover
+.ai-meme
+.ai-comic
+.ai-anime
+.ai-avatar
+.ai-pfp
+.ai-banner
+.ai-wallpaper
+.ai-icon
+.ai-ui
+.ai-website
+.ai-app
+.ai-game
+.ai-nft
+.ai-crypto
+.ai-trade
+.ai-stock
+.ai-news
+.ai-trend
+.ai-recipe
+.ai-workout
+.ai-diet
+.ai-fitness
+.ai-motivation
+.ai-quote
+.ai-fact
+.ai-trivia
+.ai-joke
+.ai-riddle
+2*DOWNLOAD Commands 
+.ytmp3
+.ytmp4
+.youtube
+.yt
+.ytsearch
+.ytplay
+.tiktok
+.tt
+.ttdl
+.ttsearch
+.ig
+.igdl
+.igstory
+.igreel
+.igphoto
+.igvideo
+.fb
+.fbdl
+.fbwatch
+.twitter
+.tw
+.twdl
+.twt
+.spotify
+.sp
+.spsong
+.spplaylist
+.soundcloud
+.sc
+.scsearch
+.mediafire
+.mega
+.drive
+.gdrive
+.dropbox
+.zippyshare
+.terabox
+.pinterest
+.pin
+.pinvideo
+.pinimage
+.reddit
+.red
+.reddl
+.imgur
+.imgurdl
+.apk
+.apkdl
+.playstore
+.appstore
+.github
+.gitclone
+.gitdl
+.gitrelease
+.gitgists
+.npm
+.npmsearch
+.npmdl
+.pypi
+.pypisearch
+.steam
+.epic
+.origin
+.uplay
+.xbox
+.ps
+.nintendo
+.emulator
+.rom
+.iso
+.torrent
+.magnet
+.libgen
+.zlibrary
+.scihub
+.pdfdrive
+.scribd
+.slideshare
+.doc
+.ppt
+.xls
+.csv
+.json
+.xml
+.zip
+.rar
+.7z
+.tar
+.gz
+.iso
+.bin
+.exe
+3* sticker commands 
+.s
+.sticker
+.stick
+.stik
+.sw
+.swit
+.swm
+.stickerwm
+.toimg
+.toimage
+.tophoto
+.tovideo
+.togif
+.tomp4
+.emojimix
+.emoji
+.emojicombo
+.stickerpack
+.sp
+.spcreate
+.spadd
+.spdel
+.splogo
+.spfire
+.spice
+.spicepack
+.quoted
+.q
+.qc
+.quote
+.cquote
+.circle
+.circlesticker
+.round
+.roundsticker
+.crop
+.cropsticker
+.resize
+.resizestick
+.blur
+.blurstick
+.pixelate
+.pixelstick
+.invert
+.invertstick
+.greyscale
+.gray
+.bright
+.brightstick
+.contrast
+.contraststick
+.rotate
+.rotatestick
+.flip
+.flipstick
+.mirror
+.mirrorstick
+.text
+.textstick
+.font
+.fontstick
+.logo
+.logostick
+.badge
+.badgestick
+.meme
+.memestick
+.dog
+.cat
+.anime
+.animystick
+.cartoon
+.cartoonstick
+.robot
+.robotstick
+.alien
+.alienstick
+.fire
+.firestick
+.water
+.waterstick
+.earth
+.earthstick
+.air
+.airstick
+.gold
+.goldstick
+.neon
+.neonstick
+.glitch
+.glitchstick
+.cyber
+.cyberstick
+.vapor
+.vaporstick
+.retro
+.retrostick
+4* GROUP Commands .kick
+.add
+.promote
+.demote
+.tagall
+.hidetag
+.group
+.grouplink
+.setname
+.setdesc
+.seticon
+.admins
+.listadmin
+.invite
+.join
+.leave
+.gc
+.welcome
+.goodbye
+.antibot
+.antidelete
+.antiviewonce
+.antilink
+.antilinkwa
+.antilinktiktok
+.antilinkig
+.antilinkyt
+.antilinkfb
+.antilinktw
+.antilinktg
+.antispam
+.antiword
+.antitoxic
+.mute
+.unmute
+.lock
+.unlock
+.setpp
+.setgcpp
+.promoteall
+.demoteall
+.kickall
+.votes
+.vote
+.devote
+.voteend
+.warn
+.unwarn
+.warns
+.ban
+.unban
+.banlist
+.kicknum
+.addnum
+.promotenum
+.demotenum
+.nsfw
+.welcomegc
+.leavegc
+.setwelcome
+.setgoodbye
+.simulate
+.simwel
+.simleave
+.groupinfo
+.ginfo
+.groupstats
+.gstats
+.listonline
+.online
+.gclink
+.revokelink
+.resetlink
+.closegc
+.opengc
+.editgc
+.settimezone
+.setlanguage
+.setprefix
+.setcmd
+.delcmd
+.addcmd
+.cmdlist
+.afk
+.afklist
+.unafk
+.nsfwlist
+.sfw
+.nsfwonly
+.grouprules
+.rules
+.setrules
+5* fun commands .joke
+.quote
+.fact
+.meme
+.roast
+.truth
+.dare
+.flirt
+.compliment
+.insult
+.ship
+.ship2
+.love
+.love2
+.rate
+.howgay
+.howhot
+.howpretty
+.howdumb
+.howsmart
+.slot
+.dice
+.coin
+.rps
+.rps2
+.tictactoe
+.ttt
+.hangman
+.wordle
+.scramble
+.unscramble
+.trivia
+.quiz
+.wouldyou
+.neverhave
+.emojigame
+.guess
+.guessflag
+.guessnumber
+.pick
+.choose
+.random
+.roll
+.flip
+.8ball
+.advice
+.fortune
+.horoscope
+.compatibility
+.name
+.age
+.gender
+.country
+.bored
+.activity
+.joke2
+.dadjoke
+.chuck
+.yomama
+.knock
+.riddle
+.puzzle
+.brain
+.iq
+.personality
+.mbti
+.zodiac
+.tarot
+.magic
+.wish
+.luck
+.gamble
+.casino
+.blackjack
+.poker
+.lotto
+.bingo
+.lucky
+.unlucky
+.mood
+.vibe
+.energy
+.aura
+.character
+.roastme
+.complimentme
+.flirtme
+.dareme
+.truthme
+6*Islamic commands.quran
+.ayatul
+.surah
+.ayat
+.tilawat
+.recite
+.tafsir
+.translation
+.hadith
+.bukhari
+.muslim
+.tirmidhi
+.abu
+.nasai
+.ibnmajah
+.muwatta
+.musnad
+.dua
+.duas
+.masnoon
+.salah
+.prayer
+.namaz
+.fajr
+.zuhr
+.asr
+.maghrib
+.isha
+.jummah
+.tahajjud
+.istikhara
+.ramadan
+.eid
+.zakat
+.hajj
+.umrah
+.kaaba
+.makkah
+.madina
+.masjid
+.azan
+.azaan
+.adhan
+.iqamah
+.tasbih
+.dhikr
+.astaghfir
+.subhan
+.alhamdul
+.allahu
+.bismillah
+.insha
+.masha
+.jazak
+.baraka
+.niyyah
+.wudu
+.ghusl
+.tayammum
+.halal
+.haram
+.sunnah
+.farz
+.wajib
+.nafl
+.sadaqah
+.khair
+.sabr
+.tawakkul
+.yaqeen
+.imaan
+.islam
+.muslim
+.mumin
+.taqwa
+.ikhlaas
+.toba
+.istighfar
+.rasool
+.nabi
+.sahaba
+.khulafa
+.ashra
+.auliya
+.wali
+.shaykh
+.ulema
+.mufti
+.imam
+.khatib
+.muezzin
+.hafiz
+.qari
+.talib
+.madrasa
+.dars
+.ilm
+7*Christian  .bible
+.bibleverse
+.verse
+.scripture
+.word
+.daily
+.devotion
+.prayer
+.pray
+.prayerlist
+.intercede
+.thanks
+.praise
+.worship
+.hallelujah
+.amen
+.jesus
+.christ
+.god
+.holyspirit
+.trinity
+.cross
+.gospel
+.goodnews
+.salvation
+.grace
+.mercy
+.faith
+.hope
+.love
+.charity
+.forgive
+.forgiveness
+.repent
+.repentance
+.baptism
+.communion
+.eucharist
+.church
+.pastor
+.priest
+.minister
+.evangelist
+.mission
+.sermon
+.teaching
+.preach
+.testimony
+.witness
+.miracle
+.healing
+.deliverance
+.blessing
+.anointing
+.prophecy
+.prophesy
+.dream
+.vision
+.angel
+.archangel
+.michael
+.gabriel
+.heaven
+.hell
+.satan
+.devil
+.demon
+.spiritual
+.warfare
+.shield
+.armor
+.psalm
+.proverb
+.genesis
+.exodus
+.matthew
+.mark
+.luke
+.john
+.acts
+.romans
+.corinthians
+.galatians
+.ephesians
+.philippians
+.colossians
+.thessalonians
+.timothy
+.titus
+.philemon
+.hebrews
+.james
+.peter
+.jude
+.revelation
+.tencommandments
+.beatitudes
+.lords prayer
+.ourfather
+.creed
+.hymn
+.chor
+.gospel song
+.christian song
+8*nswf 18+.nsfw
+.xxx
+.porn
+.sext
+.nude
+.leak
+.hentai
+.ecchi
+.waifu
+.waifu2
+.neko
+.neko2
+.blowjob
+.boobs
+.ass
+.pussy
+.dick
+.sex
+.fuck
+.masturbate
+.orgasm
+.anal
+.lesbian
+.gay
+.lgbt
+.milf
+.loli
+.shota
+.furry
+.yaoi
+.yuri
+.cum
+.tits
+.nipple
+.thigh
+.leg
+.feet
+.handjob
+.trap
+.bdsm
+.fetish
+.ero
+.lewd
+.nsfwgif
+.nsfwvideo
+.nsfwimage
+.nsfwtext
+.nsfwchat
+.nsfwai
+9*Owner 
+.roleplay
+.rp
+.erp
+.kiss
+.hug
+.cuddle
+.slap
+.poke
+.pat
+.waifuimage
+.waifuquote
+.waifufact
+.animegirl
+.animeboy
+.animegirl2
+.animeboy2
+.waifuass
+.waifuboobs
+.waifuleg
+.waifufeet
+.ecchi2
+.ecchi3
+.hentaivideo
+.hentaiimage
+.hentaigif
+.hentaicom
+.hentai2
+.nsfwpack
+.lewdpack
+.ero2
+.ero3
+.lewd2
+.lewd3
+.nsfw4
+.xxx2
+.porn2
+.sext2
+.nude2
+.leak2
+.waifunsfw
+.neko18
+.ecchi18
+.hentai18.broadcast
+.bcgc
+.bcall
+.ban
+.unban
+.banlist
+.unbanall
+.block
+.unblock
+.blocklist
+.eval
+.exec
+.run
+.code
+.shell
+.shutdown
+.restart
+.reboot
+.update
+.upgrade
+.setprefix
+.getprefix
+.delprefix
+.addprefix
+.setname
+.setbio
+.setpp
+.setavatar
+.leave
+.join
+.clear
+.clearchat
+.clearall
+.pushname
+.getname
+.setstatus
+.getstatus
+.setprofile
+.getprofile
+.addowner
+.delowner
+.ownerlist
+.vip
+.addvip
+.delvip
+.viplist
+.premium
+.addpremium
+.delpremium
+.premiumlist
+.limit
+.addlimit
+.dellimit
+.resetlimit
+.limitlist
+.money
+.addmoney
+.delmoney
+.resetmoney
+.moneylist
+.exp
+.addexp
+.delexp
+.resetexp
+.explist
+.level
+.addlevel
+.dellevel
+.resetlevel
+.levellist
+.cmd
+.addcmd
+.delcmd
+.cmdlist
+.disable
+.enable
+.enabled
+.disabled
+.autoread
+.autotype
+.autorecord
+.anticall
+.antiprivate
+.antilink2
+.antitoxic2
+.welcomegc2
+.goodbyegc2
+10*game's .tictactoe
+.ttt
+.rps
+.rock
+.paper
+.scissors
+.trivia
+.quiz
+.guess
+.guessnum
+.guessword
+.hangman
+.wordle
+.scramble
+.unscramble
+.crossword
+.sudoku
+.minesweeper
+.snake
+.pong
+.breakout
+.flappy
+.dino
+.2048
+.memory
+.match
+.card
+.poker
+.blackjack
+.roulette
+.slot
+.dice
+.coin
+.flip
+.bingo
+.lotto
+.keno
+.bingo2
+.chess
+.checkers
+.ludo
+.carrom
+.candy
+.jelly
+.crush
+.merge
+.run
+.jump
+.shoot
+.fight
+.battle
+.duel
+.war
+.attack
+.defend
+.heal
+.potion
+.magic
+.spell
+.skill
+.weapon
+.armor
+.shield
+.sword
+.bow
+.arrow
+.gun
+.bomb
+.grenade
+.tank
+.plane
+.ship
+.boat
+.car
+.bike
+.race
+.drift
+.park
+.build
+.craft
+.mine
+.farm
+.fish
+.hunt
+.cook
+.eat
+.sleep
+.work
+.job
+.money
+.bank
+.shop
+.buy
+.sell
+.inventory
+.bag
+.level
+.xp
+.rank
+.leaderboard
 
-// START THE BOT
-startBot().catch(err => {
-    console.error('Error starting bot:', err)
-    process.exit(1)
-})
 
-module.exports = { startBot }
