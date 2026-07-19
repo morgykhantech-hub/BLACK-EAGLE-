@@ -56,7 +56,14 @@ async function startBot() {
         }
     })
 }
-startBot .menu
+startBot .module.exports = { 
+    name: 'menu', 
+    execute(sock, msg){ 
+        sock.sendMessage(msg.key.remoteJid, { 
+            text: `*BLACK EAGLE v38.0.9*\n\n.commands loaded: ${commands.size}\n\n.ai.bible.prayer.ytmp3.sticker.menu\n\nAdd more commands in /commands folder` 
+        }) 
+    } 
+}menu
          .repo
          .prefix =[]
          .owner 
